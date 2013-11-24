@@ -1,0 +1,1 @@
+This is a simple D7 block module which shows basic info of the Website
