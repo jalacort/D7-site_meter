@@ -1,0 +1,128 @@
+<?php
+/**
+* @file
+* A block module that counts number of nodes
+*/
+
+
+/**
+* Implements hook_block_info().
+*/
+function site_meter_block_info() {
+  $blocks['site_meter'] = array(
+    // The name that will appear in the block list.
+    'info' => t('Site Meter'),
+    // Default setting.
+    'cache' => DRUPAL_CACHE_PER_ROLE,
+  );
+  return $blocks;
+}
+
+function site_meter_contents(){
+  
+$query = db_select('node', 'n')
+    ->fields('n', array('nid', 'title', 'created'))
+    ->condition('status', 1) //Published.
+    ->orderBy('created', 'DESC') //Most recent first.
+    ->execute();
+   return $query;
+}
+
+function site_meter_freshness(){
+
+$today = getdate();
+// Select nodes fresher than 1 month
+$month_ago =  mktime(0, 0, 0,$today['mon'] -1,($today['mday']), $today['year']);
+$end_time = time();
+    
+$query = db_select('node', 'n')
+    ->fields('n', array('nid', 'title', 'created'))
+    ->condition('status', 1) //Published.
+    ->condition('created', array($month_ago, $end_time), 'BETWEEN')	
+    ->execute();
+   return $query;
+}
+
+function site_meter_comments(){
+$query = db_select('comment', 'c')
+    ->fields('c', array('cid', 'created'))
+    ->execute();
+   return $query;
+}
+
+/**
+* Implements hook_block_view().
+*
+* Prepares the contents of the block.
+*/
+  
+function site_meter_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'site_meter':
+		$result = site_meter_contents();
+		$resultNum = $result->rowCount();
+		
+		$comments = site_meter_comments();
+		$commentsNum = $comments->rowCount();
+		
+		$resultFreshness = site_meter_freshness();
+		$resultFreshnessNum = $resultFreshness->rowCount();
+		
+		$resultFreshnessPct = ($resultFreshnessNum/$resultNum)*100;
+				$block['subject'] = t('Site Meter');
+		//$block['content'] = t('Estoy aqui...');
+		$block['content'] = t('Total Number of nodes: ') . $result->rowCount();
+		
+		$site_meter_freshness = variable_get('',1);
+
+
+		$site_meter_freshness = variable_get('site_meter_freshness', 3);
+
+
+		if ($site_meter_freshness == 1) {
+			$block['content'] .= '<br />' . t('Nodes in last month (%): ') . $resultFreshnessPct;
+				}
+		 // '<br />' . t('Comments: ') . $commentsNum;
+	}
+	return $block;	
+}
+
+/**
+* Implements hook_menu().
+*/
+function site_meter_menu() {
+  $items = array();
+  $items['admin/config/content/site_meter'] = array(
+    'title' => 'Site Meter',
+    'description' => 'Configuration for Current posts module',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('site_meter_form'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+* Page callback: Current posts settings
+*
+* @see site_meter_menu()
+*/
+function site_meter_form($form, &$form_state) {
+  $form['site_meter_freshness'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Freshness'),
+    '#default_value' => variable_get('site_meter_freshness', 0),
+    '#description' => t('Show % of nodes created in the last month.'),
+  );
+  
+  $form['site_meter_comments'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Comments'),
+    '#default_value' => variable_get('site_meter_comments', 0),
+    '#description' => t('Show # of nodes with comments.'),
+  );
+    
+  return system_settings_form($form);
+}
