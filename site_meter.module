@@ -19,7 +19,6 @@ function site_meter_block_info() {
 }
 
 function site_meter_contents(){
-  
 $query = db_select('node', 'n')
     ->fields('n', array('nid', 'title', 'created'))
     ->condition('status', 1) //Published.
@@ -29,7 +28,6 @@ $query = db_select('node', 'n')
 }
 
 function site_meter_freshness(){
-
 $today = getdate();
 // Select nodes fresher than 1 month
 $month_ago =  mktime(0, 0, 0,$today['mon'] -1,($today['mday']), $today['year']);
